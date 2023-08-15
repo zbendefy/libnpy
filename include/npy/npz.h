@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include "core.h"
 #include "npy.h"
@@ -70,6 +71,15 @@ class onpzstream
      *  \param endianness the endianness to use in writing the entries
      */
     onpzstream(const std::string &path,
+               compression_method_t compression = compression_method_t::STORED,
+               endian_t endianness = npy::endian_t::NATIVE);
+
+    /** Constructor.
+     *  \param stream the stream to write to
+     *  \param compression how the entries should be compressed
+     *  \param endianness the endianness to use in writing the entries
+     */
+    onpzstream(std::shared_ptr<std::ostream> &&stream,
                compression_method_t compression = compression_method_t::STORED,
                endian_t endianness = npy::endian_t::NATIVE);
 
@@ -133,7 +143,7 @@ class onpzstream
                     std::vector<uint8_t> &&bytes);
 
     bool m_closed;
-    std::ofstream m_output;
+    std::shared_ptr<std::ostream> m_output;
     compression_method_t m_compression_method;
     endian_t m_endianness;
     std::vector<file_entry> m_entries;

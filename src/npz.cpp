@@ -360,7 +360,16 @@ bool file_entry::check(const file_entry &other) const
 onpzstream::onpzstream(const std::string &path,
                        compression_method_t method,
                        endian_t endianness) : m_closed(false),
-                                              m_output(path, std::ios::out | std::ios::binary),
+                                              m_output(std::make_shared<std::ofstream>(path, std::ios::out | std::ios::binary)),
+                                              m_compression_method(method),
+                                              m_endianness(endianness)                                              
+{
+}
+
+onpzstream::onpzstream(std::shared_ptr<std::ostream> &&stream,
+                       compression_method_t method,
+                       endian_t endianness) : m_closed(false),
+                                              m_output(stream),
                                               m_compression_method(method),
                                               m_endianness(endianness)                                              
 {
@@ -402,17 +411,22 @@ void onpzstream::write_file(const std::string &filename,
         compressed_size,
         uncompressed_size,
         static_cast<std::uint16_t>(m_compression_method),
-        static_cast<std::uint32_t>(m_output.tellp())};
+        static_cast<std::uint32_t>(m_output->tellp())};
 
     bool zip64 = uncompressed_size > ZIP64_LIMIT || compressed_size > ZIP64_LIMIT;
-    write_local_header(m_output, entry, zip64);
-    m_output.write(reinterpret_cast<char *>(compressed_bytes.data()), compressed_size);
+    write_local_header(*m_output, entry, zip64);
+    m_output->write(reinterpret_cast<char *>(compressed_bytes.data()), compressed_size);
     m_entries.push_back(std::move(entry));
 }
 
 bool onpzstream::is_open() const
 {
-    return m_output.is_open();
+    if(auto as_fstream = dynamic_cast<std::ofstream *>(m_output.get()); as_fstream)
+    {
+        return as_fstream->is_open();
+    }
+
+    return true;
 }
 
 void onpzstream::close()
@@ -420,16 +434,21 @@ void onpzstream::close()
     if (!m_closed)
     {
         CentralDirectory dir;
-        dir.offset = static_cast<std::uint32_t>(m_output.tellp());
+        dir.offset = static_cast<std::uint32_t>(m_output->tellp());
         for (auto &header : m_entries)
         {
-            write_central_directory_header(m_output, header);
+            write_central_directory_header(*m_output, header);
         }
 
-        dir.size = static_cast<std::uint32_t>(m_output.tellp()) - dir.offset;
+        dir.size = static_cast<std::uint32_t>(m_output->tellp()) - dir.offset;
         dir.num_entries = static_cast<std::uint16_t>(m_entries.size());
-        write_end_of_central_directory(m_output, dir);
-        m_output.close();
+        write_end_of_central_directory(*m_output, dir);
+        
+        if(auto as_fstream = dynamic_cast<std::ofstream *>(m_output.get()); as_fstream)
+        {
+            as_fstream->close();
+        }
+
         m_closed = true;
     }
 }
