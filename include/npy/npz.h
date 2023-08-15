@@ -79,7 +79,7 @@ class onpzstream
      *  \param compression how the entries should be compressed
      *  \param endianness the endianness to use in writing the entries
      */
-    onpzstream(std::shared_ptr<std::ostream> &&stream,
+    onpzstream(std::shared_ptr<std::ostream> stream,
                compression_method_t compression = compression_method_t::STORED,
                endian_t endianness = npy::endian_t::NATIVE);
 

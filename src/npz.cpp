@@ -366,7 +366,7 @@ onpzstream::onpzstream(const std::string &path,
 {
 }
 
-onpzstream::onpzstream(std::shared_ptr<std::ostream> &&stream,
+onpzstream::onpzstream(std::shared_ptr<std::ostream> stream,
                        compression_method_t method,
                        endian_t endianness) : m_closed(false),
                                               m_output(stream),
